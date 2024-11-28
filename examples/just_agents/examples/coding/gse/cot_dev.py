@@ -22,16 +22,21 @@ class ActionableThought(IThought):
 
 
 class ChainOfThoughtDevAgent(BaseAgent, IThinkingAgent[SupportedMessages, SupportedMessages, SupportedMessages, ActionableThought]):
-    # Default prompt that instructs the agent to:
-    # 1. Explain reasoning step by step
-    # 2. Use at least 3 steps
-    # 3. Consider limitations and alternative answers
-    # 4. Use multiple methods to verify answers
-    # 5. Format response as JSON with specific fields
+    """
+    Agen uses default prompt that instructs the agent to:
+    1. Explain reasoning step by step
+    2. Use at least 3 steps
+    3. Consider limitations and alternative answers
+    4. Use multiple methods to verify answers
+    5. Format response as JSON with specific fields
+
+    This prompt may be appended after the other custom prompt to introduce COT pattern
+    """
     RESPONSE_FORMAT: ClassVar[str] = """
     
     RESPONSE FORMAT:
 
+  Your input may contain 'final_answer' entries, consider these answers of other agents.   
   For each step, provide a title that describes what you're doing in that step, along with the content.
   Decide if you need another step or if you're ready to give the final answer. 
   Respond in JSON format with 'title', 'content', 'code', 'console', and 'next_action' (either 'continue' or 'final_answer') keys.
