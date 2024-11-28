@@ -1,10 +1,11 @@
 from dotenv import load_dotenv
 from pathlib import Path
-
+from just_agents.llm_options import OPENAI_GPT4o
 from cot_dev import ChainOfThoughtDevAgent
 
-#from just_agents.examples.coding.mounts import coding_examples_dir
+from just_agents.examples.coding.mounts import coding_examples_dir
 #from just_agents.simple.utils import build_agent
+from just_agents.examples.coding.tools import run_python_code
 
 load_dotenv(override=True)
 
@@ -18,15 +19,24 @@ WARNING: This example is not working as expected, some of GSE-s are messed up
 """
 
 if __name__ == "__main__":
-    current_path = Path(__file__).parent.absolute()
+    current_dir = Path(__file__).parent.absolute()
 
-    agent = ChainOfThoughtDevAgent.convert_from_legacy(
-         Path("./bioinformatic_agent.yaml"),
-        Path("./agent_profiles.yaml"),
-        "ChainOfThoughtAgent",
+    #test_agent = ChainOfThoughtDevAgent(llm_options=OPENAI_GPT4o)
+    #test_agent.save_to_yaml(file_path=current_dir/"agent_profiles.yaml", exclude_unset=False, exclude_defaults=False)
+
+    bio_coder = ChainOfThoughtDevAgent.convert_from_legacy(
+        Path(current_dir/"bioinformatic_agent.yaml"),
+        Path(current_dir/"agent_profiles.yaml"),
+        ChainOfThoughtDevAgent,
         "bioinformatic_cot_agent",
        )
 
+    dev_ops = ChainOfThoughtDevAgent.convert_from_legacy(
+        Path(current_dir / "devops_agent.yaml"),
+        Path(current_dir / "agent_profiles.yaml"),
+        ChainOfThoughtDevAgent,
+        "devops_cot_agent",
+    )
 
     #agent = build_agent(coding_examples_dir / "bioinformatic_agent.yaml")
     #query_GSE137317 = "Download gene counts from GSE137317, split them by conditions, make PCA plot and differential expression analysis using only python libraries"

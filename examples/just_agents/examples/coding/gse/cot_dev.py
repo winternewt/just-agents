@@ -33,57 +33,61 @@ class ChainOfThoughtDevAgent(BaseAgent, IThinkingAgent[SupportedMessages, Suppor
     This prompt may be appended after the other custom prompt to introduce COT pattern
     """
     RESPONSE_FORMAT: ClassVar[str] = """
-    
-    RESPONSE FORMAT:
+RESPONSE FORMAT:
 
-  Your input may contain 'final_answer' entries, consider these answers of other agents.   
-  For each step, provide a title that describes what you're doing in that step, along with the content.
-  Decide if you need another step or if you're ready to give the final answer. 
-  Respond in JSON format with 'title', 'content', 'code', 'console', and 'next_action' (either 'continue' or 'final_answer') keys.
-  Make sure you send only one JSON step object. You response should be a valid JSON object. In the JSON use Use Triple Quotes for Multi-line Strings.
+Your input may contain 'final_answer' entries, consider these answers of other agents.   
+For each step, provide a title that describes what you're doing in that step, along with the content.
+Decide if you need another step or if you're ready to give the final answer. 
+Respond in JSON format with 'title', 'content', 'code', 'console', and 'next_action' (either 'continue' or 'final_answer') keys.
+Make sure you send only one JSON step object. You response should be a valid JSON object. In the JSON use Use Triple Quotes for Multi-line Strings.
 
-  USE AS MANY REASONING STEPS AS POSSIBLE. AT LEAST 3. 
-  BE AWARE OF YOUR LIMITATIONS AS AN LLM AND WHAT YOU CAN AND CANNOT DO. 
-  IN YOUR REASONING, INCLUDE EXPLORATION OF ALTERNATIVE ANSWERS. 
-  CONSIDER YOU MAY BE WRONG, AND IF YOU ARE WRONG IN YOUR REASONING, WHERE IT WOULD BE. 
-  FULLY TEST ALL OTHER POSSIBILITIES. 
-  YOU CAN BE WRONG. WHEN YOU SAY YOU ARE RE-EXAMINING, ACTUALLY RE-EXAMINE, AND USE ANOTHER APPROACH TO DO SO. 
-  DO NOT JUST SAY YOU ARE RE-EXAMINING. USE AT LEAST 3 METHODS TO DERIVE THE ANSWER. USE BEST PRACTICES.
+USE AS MANY REASONING STEPS AS POSSIBLE. AT LEAST 3. 
+BE AWARE OF YOUR LIMITATIONS AS AN LLM AND WHAT YOU CAN AND CANNOT DO. 
+IN YOUR REASONING, INCLUDE EXPLORATION OF ALTERNATIVE ANSWERS. 
+CONSIDER YOU MAY BE WRONG, AND IF YOU ARE WRONG IN YOUR REASONING, WHERE IT WOULD BE. 
+FULLY TEST ALL OTHER POSSIBILITIES. 
+YOU CAN BE WRONG. WHEN YOU SAY YOU ARE RE-EXAMINING, ACTUALLY RE-EXAMINE, AND USE ANOTHER APPROACH TO DO SO. 
+DO NOT JUST SAY YOU ARE RE-EXAMINING. USE AT LEAST 3 METHODS TO DERIVE THE ANSWER. USE BEST PRACTICES.
 
-  Examples of a valid JSON response:
-  ```json
-  {
-      "title": "Identifying Key Information",
-      "content": "To begin solving this problem, we need to carefully examine the given information and identify the crucial elements that will guide our solution process. This involves...",
-      "next_action": "continue"
-  }```
-  
-  ```json
-  {
-      "title": "Code to solve the problem",
-      "content": "This code is expected to ... As a result the following should be produced: ...",
-      "code": "\"\"
-            import numpy as np
-            ...
-      \"\"",
-      "next_action": "final_answer"
-  }```
+Examples of a valid JSON response:
+```json
+{
+  "title": "Identifying Key Information",
+  "content": "To begin solving this problem, we need to carefully examine the given information and identify the crucial elements that will guide our solution process. This involves...",
+  "next_action": "continue"
+}```
 
-  ```json
-  {
-      "title": "Code execution observations",
-      "content": "Code execution failed during ... , root cause of the problem likely is ..."
-      "code": " "
-      "console": "\"\"
-          Traceback (most recent call last):
-      \"\"",
-      "next_action": "final_answer"
-  }```
-      
+```json
+{
+  "title": "Code to solve the problem",
+  "content": "This code is expected to ... As a result the following should be produced: ...",
+  "code": "\"\"
+        import numpy as np
+        ...
+  \"\"",
+  "next_action": "final_answer"
+}```
+
+```json
+{
+  "title": "Code execution observations",
+  "content": "Code execution failed during ... , root cause of the problem likely is ..."
+  "code": " "
+  "console": "\"\"
+      Traceback (most recent call last):
+  \"\"",
+  "next_action": "final_answer"
+}```
 """
 
     # Allow customization of the system prompt while maintaining the default as fallback
+    DEFAULT_COT_PROMPT: ClassVar[str] = """ You are an expert AI assistant that explains your reasoning step by step. 
+    """
     system_prompt: str = Field(
+        DEFAULT_COT_PROMPT,
+        description="System prompt of the agent")
+
+    response_format: str = Field(
         RESPONSE_FORMAT,
         description="System prompt of the agent")
 
@@ -93,7 +97,7 @@ class ChainOfThoughtDevAgent(BaseAgent, IThinkingAgent[SupportedMessages, Suppor
         # Call parent class's post_init first (from JustAgentProfile)
         super().model_post_init(__context)
         if self.append_response_format:
-            system_prompt  = self.system_prompt + "\n\n" + self.RESPONSE_FORMAT
+            system_prompt  = self.system_prompt + "\n\n" + self.response_format
             self.memory.clear_messages()
             self.instruct(system_prompt) # don't modify self system prompt to avoid saving it into profile
 

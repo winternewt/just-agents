@@ -1,17 +1,27 @@
 import re
-from dotenv import load_dotenv
+
 import requests
-from just_agents.core.interfaces.IAgent import IAgent
-from just_agents.simple.utils import build_agent
-from just_agents.simple.llm_session import LLMSession
+
 from llm_sandbox.micromamba import MicromambaSession
-from llm_sandbox.docker import SandboxDockerSession
+
 from pathlib import Path
-from mounts import make_mounts, input_dir, output_dir
+from just_agents.examples.coding.mounts import make_mounts, input_dir, output_dir
 
 """
 Tools for running code in sandboxed environment that also mounts input and output directories.
 """
+
+def validate_python_code_syntax(code: str, filename: str)-> str:
+    """
+    code: str # python code to validate
+    filename: str # a filename to use in error messages
+    """
+    try:
+        # Compile the code string to check for syntax errors
+        compiled_code = compile(code, f"/example/{filename}", "exec")
+        return ("Code syntax is correct")
+    except SyntaxError as e:
+        return (f"Syntax error in code: {e}")
 
 def download_file(source_url: str, file_name: str) -> bool:
     """ Download file from source_url and save it to '/input' folder with file_name that available mount for runtime. """
@@ -73,9 +83,9 @@ def run_bash_command(command: str) -> str:
     """
     mounts = make_mounts()
     try:
-        with MicromambaSession(image="ghcr.io/longevity-genie/just-agents/biosandbox:main", 
-                               lang="python", 
-                               keep_template=True, 
+        with MicromambaSession(image="ghcr.io/longevity-genie/just-agents/biosandbox:main",
+                               lang="python",
+                               keep_template=True,
                                verbose=True,
                                mounts=mounts) as session:
             result = session.execute_command(command=command)
@@ -91,9 +101,9 @@ def run_python_code(code: str) -> str:
     """
     mounts = make_mounts()
     try:
-        with MicromambaSession(image="ghcr.io/longevity-genie/just-agents/biosandbox:main", 
-                               lang="python", 
-                               keep_template=True, 
+        with MicromambaSession(image="ghcr.io/longevity-genie/just-agents/biosandbox:main",
+                               lang="python",
+                               keep_template=True,
                                verbose=True,
                                mounts=mounts) as session:
             result = session.run(code)
