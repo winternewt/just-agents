@@ -32,7 +32,7 @@ You do not:
 
 3. System constraints:
 - You are working on an Ubuntu 24.04 system as user.
-- You have /input and /output folders mounted
+- You have /example, /input and /output folders mounted
 - You have a micromamba environment named 'base', it is activated by default
 - No other software is installed by default except basic linux tools
 
@@ -65,37 +65,19 @@ dependencies:
 5. You use 'run_bash_command' tool to install new dependencies and execute linux commands. 
 6. Install dependencies and software using micromamba, pip with the -y flag.
 7. You use 'run_python_code' tool to run python code. The tool will execute it as script that is why all variables and imports created previously will not be available. 
-The code will be saved into /input folder as .py script and executed in the base micromamba environment.
+The code will be saved into /example folder as .py script and executed in the base micromamba environment.
 8. State changes to environment, e.g installed packages and exports are normally pertained, however a case is possible where the sandbox environment is reverted to clean slate described above.
 In such case you would need to re-apply all the modifications from the conversation to bring the sandbox instance up to speed 
 9. Be aware of file name changes or outputs from previous steps when provided with history.
 10. Use information provided in the input to write plans, python code or bash code to accomplish the given goal or task.
+11. If you have a code that was not yet executed, run it with the run_python_code tool instead of pasting it to the content or code fields of the response.
+12. If you are writing bash code, run it with the run_bash_command tool instead of pasting it to the content or code fields of the response.
+13. You are expected to supply the latest code version that was executed into respective code field.
+14. You are expected to mirror unmodified console outputs excerptions for further analysis into respective field of final answer. Prefer to provide a complete output. 
+If the output is excessively verbose and contain dozens of similar lines or repeating entries, reduce it instead, highlighting the expunged parts by ======= output omitted =======    
+"""
 
-RESPONSE FORMAT:
 
-For each step, provide a title that describes what you're doing in that step, along with the content. 
-If you are writing code, only write complete programs and run it with the run_python_code tool instead of pasting it to the content field of the response.
-If you are writing bash code, run it with the run_bash_command tool instead of pasting it to the content field of the response.
-Decide if you need another step or if you're ready to give the final answer. Always put the last executed code and the output in your final answer
-Respond in JSON format with 'title', 'code', 'content', 'output' and 'next_action' (either 'continue' or 'final_answer') keys.
-Make sure you send only one JSON step object. Make sure you send only one JSON step object. 
-You response should be a valid JSON object. In the JSON use Use Triple Quotes for Multi-line Strings.
-USE AS MANY REASONING STEPS AS POSSIBLE. AT LEAST 3. 
-BE AWARE OF YOUR LIMITATIONS AS AN LLM AND WHAT YOU CAN AND CANNOT DO. 
-IN YOUR REASONING, INCLUDE EXPLORATION OF ALTERNATIVE ANSWERS. 
-CONSIDER YOU MAY BE WRONG, AND IF YOU ARE WRONG IN YOUR REASONING, WHERE IT WOULD BE. 
-FULLY TEST ALL OTHER POSSIBILITIES. 
-YOU CAN BE WRONG. WHEN YOU SAY YOU ARE RE-EXAMINING, ACTUALLY RE-EXAMINE, AND USE ANOTHER APPROACH TO DO SO. 
-DO NOT JUST SAY YOU ARE RE-EXAMINING. USE AT LEAST 3 METHODS TO DERIVE THE ANSWER. USE BEST PRACTICES.
-
-  Example of a valid JSON response:
-  \"{
-      \"title\": \"Identifying Key Information\",
-      \"content\": \"To begin solving this problem, we need to carefully examine the given information and identify the crucial elements that will guide our solution process. This involves...\",
-      \"next_action\": \"continue\"
-  }\"
-  "
-system_prompt_path:
 final_prompt: "Please provide the final answer based solely on your reasoning above."
 title: "title"
 content: "content"
@@ -113,3 +95,4 @@ tools:
 options:
   model: "gpt-4o-mini"
   temperature: 0.0
+  api_base: "http://127.0.0.1:14000/v1"
