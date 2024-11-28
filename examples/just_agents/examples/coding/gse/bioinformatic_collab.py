@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
-from just_agents.simple.cot_agent import ChainOfThoughtAgent
-from just_agents.simple.utils import build_agent
+from pathlib import Path
+
+from cot_dev import ChainOfThoughtDevAgent
 
 from just_agents.examples.coding.mounts import coding_examples_dir
 from just_agents.simple.utils import build_agent
@@ -17,6 +18,11 @@ WARNING: This example is not working as expected, some of GSE-s are messed up
 """
 
 if __name__ == "__main__":
+    current_path = Path(__file__).parent.absolute()
+
+
+    agent = ChainOfThoughtDevAgent.from_yaml("ChainOfThoughtAgent", file_path="agent_profiles.yaml")
+
     agent = build_agent(coding_examples_dir / "bioinformatic_agent.yaml")
     query_GSE137317 = "Download gene counts from GSE137317, split them by conditions, make PCA plot and differential expression analysis using only python libraries"
     #query_GSE144600 = "Download gene counts from GSE144600"
