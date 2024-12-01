@@ -9,10 +9,11 @@ agent_profiles:
     final_max_tokens: 2500
     llm_options:
       api_base: http://127.0.0.1:14000/v1
-      model: gpt-4o
+      model: gpt-4o-mini
       temperature: 0.0
       tool_choice: auto
-    max_steps: 25
+    max_steps: 10
+    max_tool_calls: 50
     response_format: |2-
 
       RESPONSE FORMAT:
@@ -31,14 +32,14 @@ agent_profiles:
       YOU CAN BE WRONG. WHEN YOU SAY YOU ARE RE-EXAMINING, ACTUALLY RE-EXAMINE, AND USE ANOTHER APPROACH TO DO SO.
       DO NOT JUST SAY YOU ARE RE-EXAMINING. USE AT LEAST 3 METHODS TO DERIVE THE ANSWER. USE BEST PRACTICES.
 
-      Examples of a valid JSON response:
+      Example 1 of a valid JSON response:
       ```json
       {
         "title": "Identifying Key Information",
         "content": "To begin solving this problem, we need to carefully examine the given information and identify the crucial elements that will guide our solution process. This involves...",
         "next_action": "continue"
       }```
-
+      Example 2 of a valid JSON response:
       ```json
       {
         "title": "Code to solve the problem",
@@ -49,7 +50,7 @@ agent_profiles:
         """,
         "next_action": "final_answer"
       }```
-
+      Example 3 of a valid JSON response:
       ```json
       {
         "title": "Code execution observations",
@@ -60,6 +61,31 @@ agent_profiles:
         """,
         "next_action": "final_answer"
       }```
+      Example 1 of INVALID response including multiple JSON objects instead of one, DO NOT do that:
+      ```json
+      {
+        "title": "Some thinking",
+        "content": "...",
+        "next_action": "continue"
+      }
+      {
+        "title": "Final thought!",
+        "content": "I got an answer already",
+        "next_action": "final_answer"
+      }
+      Example 2 of INVALID response including multiple JSON objects instead of one, DO NOT do that:
+      ```json
+      {
+        "title": "Some thinking",
+        "content": "...",
+        "next_action": "continue"
+      }
+      {
+        "title": "Some more thinking in same step",
+        "content": "...",
+        "next_action": "continue"
+      }
+      ```
     streaming_method: openai
     system_prompt: |-
       You are a bioinformatician AI assistant.
@@ -145,16 +171,16 @@ agent_profiles:
     tools:
       validate_python_code_syntax:
         auto_refresh: true
-        description: |-
-          code: str # python code to validate
-          filename: str # a filename to use in error messages
+        description: Validates the syntax of a Python code string.
         function: validate_python_code_syntax
         package: just_agents.examples.coding.tools
         parameters:
           properties:
             code:
+              description: Python code to validate.
               type: string
             filename:
+              description: Filename to include in error messages for context.
               type: string
           required:
           - code
@@ -174,7 +200,8 @@ agent_profiles:
       temperature: 0.0
       tool_choice: auto
     max_steps: 25
-    response_format: |2-
+    max_tool_calls: 50
+    response_format: |2
 
       RESPONSE FORMAT:
 
@@ -192,14 +219,14 @@ agent_profiles:
       YOU CAN BE WRONG. WHEN YOU SAY YOU ARE RE-EXAMINING, ACTUALLY RE-EXAMINE, AND USE ANOTHER APPROACH TO DO SO.
       DO NOT JUST SAY YOU ARE RE-EXAMINING. USE AT LEAST 3 METHODS TO DERIVE THE ANSWER. USE BEST PRACTICES.
 
-      Examples of a valid JSON response:
+      Example 1 of a valid JSON response:
       ```json
       {
         "title": "Identifying Key Information",
         "content": "To begin solving this problem, we need to carefully examine the given information and identify the crucial elements that will guide our solution process. This involves...",
         "next_action": "continue"
       }```
-
+      Example 2 of a valid JSON response:
       ```json
       {
         "title": "Code to solve the problem",
@@ -210,7 +237,7 @@ agent_profiles:
         """,
         "next_action": "final_answer"
       }```
-
+      Example 3 of a valid JSON response:
       ```json
       {
         "title": "Code execution observations",
@@ -221,6 +248,31 @@ agent_profiles:
         """,
         "next_action": "final_answer"
       }```
+      Example 1 of INVALID response including multiple JSON objects instead of one, DO NOT do that:
+      ```json
+      {
+        "title": "Some thinking",
+        "content": "...",
+        "next_action": "continue"
+      }
+      {
+        "title": "Final thought!",
+        "content": "I got an answer already",
+        "next_action": "final_answer"
+      }
+      Example 2 of INVALID response including multiple JSON objects instead of one, DO NOT do that:
+      ```json
+      {
+        "title": "Some thinking",
+        "content": "...",
+        "next_action": "continue"
+      }
+      {
+        "title": "Some more thinking in same step",
+        "content": "...",
+        "next_action": "continue"
+      }
+      ```
     streaming_method: openai
     system_prompt: |-
       You are a seasoned DevOps AI assistant.

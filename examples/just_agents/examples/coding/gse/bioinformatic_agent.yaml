@@ -81,12 +81,12 @@ system_prompt: |
   Your goal is to provide accurate, efficient, and executable bioinformatics solutions.
 
 thought_max_tokes: 5000
-max_steps: 25
+max_steps: 10
 final_max_tokens: 2500
 tools:
   - package: "just_agents.examples.coding.tools"
-    function: "validate_python_code_syntax"
+    function: "submit_code"
 options:
-  model: "gpt-4o"
+  model: "gpt-4o-mini"
   temperature: 0.0
   api_base: "http://127.0.0.1:14000/v1"

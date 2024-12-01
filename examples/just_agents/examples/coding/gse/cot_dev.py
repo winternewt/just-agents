@@ -1,24 +1,14 @@
-from typing import ClassVar, Optional, Literal, Any
+import json
+from typing import ClassVar, Optional, Any, Dict
 from just_agents.base_agent import BaseAgent
-from pydantic import BaseModel, Field
-from just_agents.core.types import Output, SupportedMessages
-from just_agents.core.interfaces.IAgent import IAgent
-from just_agents.patterns.interfaces.IThinkingAgent import IThinkingAgent, IThought, THOUGHT_TYPE
+from pydantic import Field, PrivateAttr
+from just_bus import JustEventBus
 
-class ActionableThought(IThought):
-    """
-    This is a thought object that is used to represent a thought in the chain of thought agent.
-    """
-    title: str = Field(..., description="Represents the title/summary of the current thinking step")
-    content: str = Field(..., description="The detailed explanation/reasoning for this thought step")
-    next_action: Literal["continue", "final_answer"] = Field(default="continue", description="Indicates whether to continue thinking or provide final answer")
+from cot_memory import ActionableThought, IBaseThoughtMemory, BaseThoughtMemory
+from just_agents.core.types import SupportedMessages
+from just_agents.patterns.interfaces.IThinkingAgent import IThinkingAgent
 
-    code: Optional[str] = Field(None, description="Optional field containing script code")
-    console: Optional[str] = Field(None, description="Optional field containing console outputs")
 
-    def is_final(self) -> bool:
-        # Helper method to check if this is the final thought in the chain
-        return self.next_action == "final_answer"
 
 
 class ChainOfThoughtDevAgent(BaseAgent, IThinkingAgent[SupportedMessages, SupportedMessages, SupportedMessages, ActionableThought]):
@@ -49,14 +39,14 @@ FULLY TEST ALL OTHER POSSIBILITIES.
 YOU CAN BE WRONG. WHEN YOU SAY YOU ARE RE-EXAMINING, ACTUALLY RE-EXAMINE, AND USE ANOTHER APPROACH TO DO SO. 
 DO NOT JUST SAY YOU ARE RE-EXAMINING. USE AT LEAST 3 METHODS TO DERIVE THE ANSWER. USE BEST PRACTICES.
 
-Examples of a valid JSON response:
+Example 1 of a valid JSON response:
 ```json
 {
   "title": "Identifying Key Information",
   "content": "To begin solving this problem, we need to carefully examine the given information and identify the crucial elements that will guide our solution process. This involves...",
   "next_action": "continue"
 }```
-
+Example 2 of a valid JSON response:
 ```json
 {
   "title": "Code to solve the problem",
@@ -67,7 +57,7 @@ Examples of a valid JSON response:
   \"\"",
   "next_action": "final_answer"
 }```
-
+Example 3 of a valid JSON response:
 ```json
 {
   "title": "Code execution observations",
@@ -78,11 +68,40 @@ Examples of a valid JSON response:
   \"\"",
   "next_action": "final_answer"
 }```
+Example 1 of INVALID response including multiple JSON objects instead of one, DO NOT do that:
+```json
+{
+  "title": "Some thinking",
+  "content": "...",
+  "next_action": "continue"
+}
+{
+  "title": "Final thought!",
+  "content": "I got an answer already",
+  "next_action": "final_answer"
+}
+Example 2 of INVALID response including multiple JSON objects instead of one, DO NOT do that:
+```json
+{
+  "title": "Some thinking",
+  "content": "...",
+  "next_action": "continue"
+}
+{
+  "title": "Some more thinking in same step",
+  "content": "...",
+  "next_action": "continue"
+}
+```
+
 """
 
     # Allow customization of the system prompt while maintaining the default as fallback
     DEFAULT_COT_PROMPT: ClassVar[str] = """ You are an expert AI assistant that explains your reasoning step by step. 
     """
+
+    CODE_OK: ClassVar[str] = "Code syntax is correct"
+
     system_prompt: str = Field(
         DEFAULT_COT_PROMPT,
         description="System prompt of the agent")
@@ -91,7 +110,15 @@ Examples of a valid JSON response:
         RESPONSE_FORMAT,
         description="System prompt of the agent")
 
+    thoughts: IBaseThoughtMemory = Field(default_factory= BaseThoughtMemory, exclude=True, description="Memory of thought chains")
+
+    max_steps: int = Field(IThinkingAgent.MAX_STEPS, ge=1, description="Maximum number of reasoning steps")
+
     append_response_format: bool = Field(True, description="Whether to append default COT prompt of this agent to the provided")
+
+    _event_bus : JustEventBus = PrivateAttr(default_factory= JustEventBus)
+    _code_buffer: Dict[str,str]  = PrivateAttr(default_factory=dict)
+    _console_buffer: str = PrivateAttr("")
 
     def model_post_init(self, __context: Any) -> None:
         # Call parent class's post_init first (from JustAgentProfile)
@@ -101,12 +128,53 @@ Examples of a valid JSON response:
             self.memory.clear_messages()
             self.instruct(system_prompt) # don't modify self system prompt to avoid saving it into profile
 
+        # Subscribe handlers to events
+        self.event_bus.subscribe("submit_code", self.handle_submit_code)
+        self.event_bus.subscribe("submit_console_output", self.handle_submit_console_output)
+
+
     def thought_query(self, query: SupportedMessages, **kwargs) -> ActionableThought:
         # Parses the LLM response into a structured ActionableThought object
         if self.supports_response_format and "gpt-4" in self.llm_options["model"]:  # despite what they declare only openai does support reponse format right
             return self.query_structural(query, parser=ActionableThought, response_format={"type": "json_object"}, **kwargs)
         else:
             return self.query_structural(query, parser=ActionableThought, **kwargs)
+
+    def handle_submit_code(self, code: str, filename: str, result: str) -> None:
+        if result == self.CODE_OK:
+            # Prepare JSON with proper escaping
+            self._code_buffer[filename] = code
+            # escaped_json = json.dumps(output, indent=4)
+
+    def handle_submit_console_output(self, output: str, append: bool) -> None:
+        previous = ""
+        if append:
+            previous = self._console_buffer
+        self._console_buffer = previous + '\n' + output
+
+    def think(
+        self,
+        query: SupportedMessages,
+        max_iter: Optional[int] = None,
+        chain: Optional[list[ActionableThought]] = None,
+        **kwargs
+    ) -> tuple[Optional[ActionableThought], Optional[list[ActionableThought]]]:
+        if not max_iter:
+            max_iter = self.max_steps
+        final_result : Optional[ActionableThought] = None
+        current_chain : Optional[list[ActionableThought]] = None
+        (final_result , current_chain) = super().think(query,max_iter=max_iter,chain=None,**kwargs)
+        for thought in current_chain:
+            thought.agent = self.shortname
+        if final_result and isinstance(final_result, ActionableThought):
+            final_result.agent = self.shortname
+
+        self.thoughts.add_messages([current_chain,final_result]) #remember individual thougths
+        return (
+            final_result,
+            [*(chain or []), current_chain]
+        )
+
 
 
 

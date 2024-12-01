@@ -497,7 +497,7 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             exclude_none: bool = True,
             serialize_as_any: bool = True,
             exclude_defaults: bool = True, 
-            exclude_unset: bool = True
+            exclude_unset: bool = False
     ):
         """
         Saves the instance's data to a YAML file under the specified parent section and section name (shortname).
