@@ -1,5 +1,5 @@
 from pydantic import Field, PrivateAttr
-from typing import Optional, List, Union, Any, Generator
+from typing import Optional, List, Union, Any, Generator, Callable
 from just_agents.types import MessageDict, Role, SupportedMessages
 
 from just_agents.llm_options import LLMOptions
@@ -76,6 +76,7 @@ class BaseAgent(
     # Protected handlers implementation
     _on_query : List[QueryListener] = PrivateAttr(default_factory=list)
     _on_response : List[ResponseListener] = PrivateAttr(default_factory=list)
+    _transient_tools: dict = PrivateAttr(default_factory=dict)
 
     # Private attributes for internal state management
     _protocol: Optional[IProtocolAdapter] = PrivateAttr(None)  # Handles LLM-specific message formatting
@@ -133,11 +134,35 @@ class BaseAgent(
 
     def _prepare_options(self, options: LLMOptions):
         opt = options.copy()
-        if self.tools is not None and not self._tool_fuse_broken:  # populate llm_options based on available tools
-            opt["tools"] = [{"type": "function",
-                             "function": self.tools[tool].get_litellm_description()} for tool in self.tools]
+        permanent_tools = []
+        transient_tools = []
+        if not self._tool_fuse_broken:  # populate llm_options based on available tools
+            if self.tools is not None:
+                permanent_tools = [
+                    self._protocol.llm_tool_from_description(self.tools[tool].get_litellm_description())
+                    for tool in self.tools
+                ]
+            if self._transient_tools:
+                transient_tools = [
+                    self._protocol.llm_tool_from_callable(
+                        tool
+                    )
+                    for name, tool in self._transient_tools.items()
+                ]
+        all_tools = permanent_tools + transient_tools
+        if all_tools:
+            opt["tools"] = all_tools
         return opt
-    
+
+    #TODO: handle transient tools like instance methods in justtool and remove this boilerplate
+    def _add_transient_tool(self, name: str, func: Callable) -> None:
+        self._transient_tools[name] = func
+
+    def _remove_transient_tools_by_prefix(self, prefix: str) -> None:
+        to_remove = [tool_name for tool_name in self._transient_tools if tool_name.startswith(prefix)]
+        for tool_name in to_remove:
+            del self._transient_tools[tool_name]
+
     def _execute_completion(
             self,
             stream: bool,

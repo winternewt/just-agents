@@ -41,6 +41,14 @@ class IProtocolAdapter(IAbstractStreamingProtocol, ABC, Generic[BaseModelRespons
         raise NotImplementedError("You need to implement content_from_delta first!")
 
     @abstractmethod
+    def llm_tool_from_description(self, description: dict) -> dict:
+        raise NotImplementedError("You need to implement function_from_description first!")
+
+    @abstractmethod
+    def llm_tool_from_callable(self, func: Callable) -> dict:
+        raise NotImplementedError("You need to implement function_from_description first!")
+
+    @abstractmethod
     def tool_calls_from_message(self, message: AbstractMessage) -> List[IFunctionCall[AbstractMessage]]:
         raise NotImplementedError("You need to implement tool_calls_from_response first!")
 

@@ -1,8 +1,10 @@
 import json
-import pprint
 
 from litellm import ModelResponse, CustomStreamWrapper, GenericStreamingChunk, completion, acompletion, stream_chunk_builder
-from typing import Optional, Union, Coroutine, ClassVar, Type, Sequence, List, Any, AsyncGenerator
+from litellm.utils import function_to_dict
+from litellm.types.utils import StreamingChoices, Delta
+
+from typing import Optional, Union, Coroutine, ClassVar, Type, Sequence, List, Any, AsyncGenerator, Dict, Callable
 from pydantic import HttpUrl, Field, AliasPath, PrivateAttr, BaseModel, Json, field_validator
 
 from just_agents.types import MessageDict, Role
@@ -11,7 +13,7 @@ from just_agents.interfaces.function_call import IFunctionCall, ToolByNameCallba
 from just_agents.interfaces.protocol_adapter import IProtocolAdapter, ExecuteToolCallback
 from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
 from just_agents.protocols.openai_streaming import OpenaiStreamingProtocol
-from litellm.types.utils import StreamingChoices, Delta
+
 #from openai.types import CompletionUsage
 #from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam, ChatCompletionAssistantMessageParam, ChatCompletionToolMessageParam,ChatCompletionFunctionMessageParam
 #from openai.types.chat.chat_completion import ChatCompletion, Choice, ChatCompletionMessage
@@ -89,6 +91,14 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
     
     # TODO: what about https://docs.litellm.ai/docs/providers/custom_llm_server ?
 
+    def llm_tool_from_description(self, description: Dict[str, Any]) -> MessageDict:
+        return {"type": "function", "function": description}
+
+    def llm_tool_from_callable(self, func: Callable) -> MessageDict:
+        return self.llm_tool_from_description(
+            function_to_dict(func)
+        )
+
     def message_from_response(self, response: ModelResponse) -> MessageDict:
         message = response.choices[0].message.model_dump(
             mode="json",
@@ -126,8 +136,11 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
                 LiteLLMFunctionCall(**tool_call)
                 for tool_call in tool_calls
             ]
+
     @staticmethod
     def reenumerate_tool_call_chunks(chunks : List[Any]):
+        #TODO: remove when https://github.com/BerriAI/litellm/issues/7621 is fixed
+        # test_pure_litellm must pas first
         tool_calls = []
         message = None
         for chunk in chunks:

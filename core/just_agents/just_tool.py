@@ -64,7 +64,7 @@ class JustTool(LiteLLMDescription):
             parameters.append({ name: param_info})
         return parameters
 
-    def get_litellm_description(self) -> Dict[str, Any]:
+    def get_litellm_description(self) -> Dict[str, Any]: #TODO: decouple from protocol implementation
         dump = self.model_dump(
             mode='json',
             by_alias=False,
